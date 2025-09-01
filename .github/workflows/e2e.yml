@@ -185,15 +185,15 @@ jobs:
           kill $(cat preview-server.pid) || true
           
       - name: Upload screenshot artifact
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-screenshot
-          path: /tmp/e2e-test/test-app/e2e-screenshot.png
+          path: e2e-screenshot.png
           retention-days: 7
           
       - name: Clean up
         if: always()
         run: |
           npm unlink -g create-revitt-app || true
-          rm -rf /tmp/e2e-test
+          rm -rf /tmp/e2e-test || true
