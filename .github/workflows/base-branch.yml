@@ -76,10 +76,19 @@ jobs:
           node main-e2e-test.js
           pkill -f "vite" || true
           
+          # Generate coverage for SonarCloud
+          npm run test:coverage
+          
       - name: Validate package integrity
         run: |
           npm pack --dry-run
           echo "✅ Main branch: Package is ready for publishing"
+          
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           
       - name: Clean up
         if: always()
