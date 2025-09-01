@@ -26,15 +26,27 @@ jobs:
       - name: Run tests
         run: npm test
         
-      - name: Test CLI functionality
+      - name: Run E2E tests before publishing
         run: |
           npm link
-          mkdir -p /tmp/test-cli
-          cd /tmp/test-cli
+          npm install -g playwright
+          playwright install chromium
+          
+          # Create and test app
+          mkdir -p /tmp/e2e-test
+          cd /tmp/e2e-test
           create-revitt-app test-project --template default
           cd test-project
+          npm install
+          npm run test
+          npm run type-check
           npm run build
-          npm run type-check --if-present
+          
+          # Test dev server
+          npm run dev &
+          timeout 60 sh -c 'until curl -s http://localhost:5173; do sleep 1; done'
+          curl -s http://localhost:5173 | grep -q "html" && echo "✅ E2E: App loads successfully"
+          pkill -f "vite" || true
           
       - name: Update package version
         run: |
