@@ -21,13 +21,17 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/create-revitt-app.git"
+    "url": "https://github.com/shaharia-lab/revitt.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/create-revitt-app/issues"
+    "url": "https://github.com/shaharia-lab/revitt/issues"
   },
-  "homepage": "https://github.com/your-username/create-revitt-app#readme",
-  "author": "Your Name",
+  "homepage": "https://github.com/shaharia-lab/revitt#readme",
+  "author": {
+    "name": "Shaharia Azam",
+    "email": "shaharia@gmail.com",
+    "url": "https://shaharia.com"
+  },
   "license": "MIT",
   "scripts": {
     "test": "echo \"No tests yet\"",
