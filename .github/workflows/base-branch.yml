@@ -52,7 +52,8 @@ jobs:
           npm run dev &
           timeout 60 sh -c 'until curl -s http://localhost:5173; do sleep 1; done'
           
-          # Browser test
+          # Create browser test in CLI directory (where Playwright is installed) 
+          cd $GITHUB_WORKSPACE
           cat > main-e2e-test.mjs << 'EOF'
           import { chromium } from 'playwright';
           
@@ -85,7 +86,7 @@ jobs:
           echo "✅ Main branch: Package is ready for publishing"
           
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

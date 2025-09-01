@@ -90,9 +90,8 @@ jobs:
           
       - name: Run Playwright E2E tests
         run: |
-          cd /tmp/e2e-test/test-app
-          
-          # Create a simple Playwright test
+          # Create E2E test in CLI directory (where Playwright is installed)
+          cd $GITHUB_WORKSPACE
           cat > e2e-test.mjs << 'EOF'
           import { chromium } from 'playwright';
           
