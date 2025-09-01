@@ -53,8 +53,8 @@ jobs:
           timeout 60 sh -c 'until curl -s http://localhost:5173; do sleep 1; done'
           
           # Browser test
-          cat > main-e2e-test.js << 'EOF'
-          const { chromium } = require('playwright');
+          cat > main-e2e-test.mjs << 'EOF'
+          import { chromium } from 'playwright';
           
           (async () => {
             const browser = await chromium.launch();
@@ -73,7 +73,7 @@ jobs:
           })();
           EOF
           
-          node main-e2e-test.js
+          node main-e2e-test.mjs
           pkill -f "vite" || true
           
           # Generate coverage for SonarCloud

@@ -93,8 +93,8 @@ jobs:
           cd /tmp/e2e-test/test-app
           
           # Create a simple Playwright test
-          cat > e2e-test.js << 'EOF'
-          const { chromium } = require('playwright');
+          cat > e2e-test.mjs << 'EOF'
+          import { chromium } from 'playwright';
           
           (async () => {
             const browser = await chromium.launch();
@@ -162,7 +162,7 @@ jobs:
           })();
           EOF
           
-          node e2e-test.js
+          node e2e-test.mjs
           
       - name: Stop dev server
         run: |
