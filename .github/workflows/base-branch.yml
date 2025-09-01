@@ -1,0 +1,98 @@
+name: Base Branch
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  validate-main:
+    name: Validate Main Branch
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run tests
+        run: npm test
+        
+      - name: Link CLI globally
+        run: npm link
+        
+      - name: Install Playwright
+        run: |
+          npm install -g playwright
+          playwright install chromium
+          
+      - name: Run comprehensive E2E validation
+        run: |
+          # Create and test app
+          mkdir -p /tmp/main-validation
+          cd /tmp/main-validation
+          create-revitt-app production-test --template default
+          cd production-test
+          
+          # Install and validate
+          npm install
+          npm run test
+          npm run type-check
+          npm run lint
+          npm run build
+          
+          # Test dev server
+          npm run dev &
+          timeout 60 sh -c 'until curl -s http://localhost:5173; do sleep 1; done'
+          
+          # Create browser test in CLI directory (where Playwright is installed) 
+          cd $GITHUB_WORKSPACE
+          cat > main-e2e-test.mjs << 'EOF'
+          import { chromium } from 'playwright';
+          
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            
+            await page.goto('http://localhost:5173');
+            await page.waitForLoadState('networkidle');
+            
+            const rootElement = await page.$('#root');
+            if (!rootElement) {
+              throw new Error('Main branch validation failed: React app not loading');
+            }
+            
+            console.log('✅ Main branch validation: App loads successfully');
+            await browser.close();
+          })();
+          EOF
+          
+          node main-e2e-test.mjs
+          pkill -f "vite" || true
+          
+          # Generate coverage for SonarCloud
+          npm run test:coverage
+          
+      - name: Validate package integrity
+        run: |
+          npm pack --dry-run
+          echo "✅ Main branch: Package is ready for publishing"
+          
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          
+      - name: Clean up
+        if: always()
+        run: |
+          npm unlink -g create-revitt-app || true
+          rm -rf /tmp/main-validation

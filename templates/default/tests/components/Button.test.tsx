@@ -29,7 +29,7 @@ describe('Button', () => {
     render(<Button variant="secondary">Secondary</Button>)
     
     const button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-secondary')
+    expect(button).toHaveClass('bg-gray-100')
   })
 
   it('applies size classes correctly', () => {

@@ -1,0 +1,199 @@
+name: E2E
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  e2e-test:
+    name: End-to-End Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          
+      - name: Install CLI dependencies
+        run: npm ci
+        
+      - name: Link CLI globally
+        run: npm link
+        
+      - name: Install Playwright
+        run: |
+          npm install -g playwright
+          playwright install chromium
+          
+      - name: Create test project directory
+        run: mkdir -p /tmp/e2e-test
+        
+      - name: Create new app using CLI
+        run: |
+          cd /tmp/e2e-test
+          create-revitt-app test-app --template default
+          
+      - name: Verify project structure
+        run: |
+          cd /tmp/e2e-test/test-app
+          # Check essential files exist
+          test -f package.json
+          test -f vite.config.ts
+          test -f tailwind.config.ts
+          test -f src/App.tsx
+          test -f src/main.tsx
+          test -d src/components
+          test -d tests
+          echo "✅ Project structure validated"
+          
+      - name: Install project dependencies
+        run: |
+          cd /tmp/e2e-test/test-app
+          npm install
+          
+      - name: Run project tests
+        run: |
+          cd /tmp/e2e-test/test-app
+          npm run test
+          
+      - name: Run type checking
+        run: |
+          cd /tmp/e2e-test/test-app
+          npm run type-check
+          
+      - name: Run linting
+        run: |
+          cd /tmp/e2e-test/test-app
+          npm run lint
+          
+      - name: Build project
+        run: |
+          cd /tmp/e2e-test/test-app
+          npm run build
+          test -d dist
+          echo "✅ Build successful"
+          
+      - name: Start dev server in background
+        run: |
+          cd /tmp/e2e-test/test-app
+          npm run dev &
+          echo $! > dev-server.pid
+          # Wait for server to start
+          timeout 60 sh -c 'until curl -s http://localhost:5173 > /dev/null; do sleep 1; done'
+          echo "✅ Dev server started"
+          
+      - name: Run Playwright E2E tests
+        run: |
+          # Create E2E test in CLI directory (where Playwright is installed)
+          cd $GITHUB_WORKSPACE
+          cat > e2e-test.mjs << 'EOF'
+          import { chromium } from 'playwright';
+          
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            
+            console.log('🚀 Navigating to http://localhost:5173');
+            await page.goto('http://localhost:5173');
+            
+            // Wait for page to load
+            await page.waitForLoadState('networkidle');
+            
+            // Check if page title contains expected content
+            const title = await page.title();
+            console.log('📄 Page title:', title);
+            
+            // Check if React app is loaded (look for root element)
+            const rootElement = await page.$('#root');
+            if (!rootElement) {
+              throw new Error('❌ Root element not found - React app not loaded');
+            }
+            console.log('✅ React root element found');
+            
+            // Check for Vite + React text (default Vite template content)
+            try {
+              await page.waitForSelector('text=Vite', { timeout: 5000 });
+              console.log('✅ Vite text found on page');
+            } catch (e) {
+              console.log('ℹ️  Vite text not found, but that is ok for custom template');
+            }
+            
+            // Check if Tailwind CSS is working (look for styled elements)
+            const hasStyledElements = await page.evaluate(() => {
+              const elements = document.querySelectorAll('*');
+              for (let el of elements) {
+                const styles = window.getComputedStyle(el);
+                // Check if any element has Tailwind-like computed styles
+                if (styles.display === 'flex' || styles.padding !== '0px' || styles.margin !== '0px') {
+                  return true;
+                }
+              }
+              return false;
+            });
+            
+            if (hasStyledElements) {
+              console.log('✅ Tailwind CSS appears to be working');
+            }
+            
+            // Take a screenshot for debugging if needed
+            await page.screenshot({ path: 'e2e-screenshot.png' });
+            console.log('📸 Screenshot saved');
+            
+            // Check console for any errors
+            const logs = [];
+            page.on('console', msg => logs.push(msg.text()));
+            
+            await browser.close();
+            
+            console.log('🎉 E2E test completed successfully!');
+            
+            // Check for console errors
+            const errors = logs.filter(log => log.includes('Error') || log.includes('error'));
+            if (errors.length > 0) {
+              console.warn('⚠️  Console errors found:', errors);
+            }
+          })();
+          EOF
+          
+          node e2e-test.mjs
+          
+      - name: Stop dev server
+        run: |
+          cd /tmp/e2e-test/test-app
+          if [ -f dev-server.pid ]; then
+            kill $(cat dev-server.pid) || true
+          fi
+          
+      - name: Test production build
+        run: |
+          cd /tmp/e2e-test/test-app
+          npm run preview &
+          echo $! > preview-server.pid
+          # Wait for preview server to start
+          timeout 60 sh -c 'until curl -s http://localhost:4173 > /dev/null; do sleep 1; done'
+          
+          # Quick test of production build
+          curl -s http://localhost:4173 | grep -q "html" && echo "✅ Production build serves correctly"
+          
+          # Stop preview server
+          kill $(cat preview-server.pid) || true
+          
+      - name: Upload screenshot artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshot
+          path: e2e-screenshot.png
+          retention-days: 7
+          
+      - name: Clean up
+        if: always()
+        run: |
+          npm unlink -g create-revitt-app || true
+          rm -rf /tmp/e2e-test || true
