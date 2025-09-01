@@ -1,0 +1,88 @@
+name: Main Branch Validation
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  validate-main:
+    name: Validate Main Branch
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run tests
+        run: npm test
+        
+      - name: Link CLI globally
+        run: npm link
+        
+      - name: Install Playwright
+        run: |
+          npm install -g playwright
+          playwright install chromium
+          
+      - name: Run comprehensive E2E validation
+        run: |
+          # Create and test app
+          mkdir -p /tmp/main-validation
+          cd /tmp/main-validation
+          create-revitt-app production-test --template default
+          cd production-test
+          
+          # Install and validate
+          npm install
+          npm run test
+          npm run type-check
+          npm run lint
+          npm run build
+          
+          # Test dev server
+          npm run dev &
+          timeout 60 sh -c 'until curl -s http://localhost:5173; do sleep 1; done'
+          
+          # Browser test
+          cat > main-e2e-test.js << 'EOF'
+          const { chromium } = require('playwright');
+          
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            
+            await page.goto('http://localhost:5173');
+            await page.waitForLoadState('networkidle');
+            
+            const rootElement = await page.$('#root');
+            if (!rootElement) {
+              throw new Error('Main branch validation failed: React app not loading');
+            }
+            
+            console.log('✅ Main branch validation: App loads successfully');
+            await browser.close();
+          })();
+          EOF
+          
+          node main-e2e-test.js
+          pkill -f "vite" || true
+          
+      - name: Validate package integrity
+        run: |
+          npm pack --dry-run
+          echo "✅ Main branch: Package is ready for publishing"
+          
+      - name: Clean up
+        if: always()
+        run: |
+          npm unlink -g create-revitt-app || true
+          rm -rf /tmp/main-validation
