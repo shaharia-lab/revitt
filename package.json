@@ -1,0 +1,45 @@
+{
+  "name": "create-revitt-app",
+  "version": "1.0.0",
+  "description": "Create a new React app with Vite, TypeScript, and Tailwind CSS v4",
+  "type": "module",
+  "bin": {
+    "create-revitt-app": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "templates"
+  ],
+  "keywords": [
+    "react",
+    "vite",
+    "typescript",
+    "tailwind",
+    "create-app",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/create-revitt-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/create-revitt-app/issues"
+  },
+  "homepage": "https://github.com/your-username/create-revitt-app#readme",
+  "author": "Your Name",
+  "license": "MIT",
+  "scripts": {
+    "test": "echo \"No tests yet\"",
+    "prepublishOnly": "echo \"Ready to publish\""
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "fs-extra": "^11.2.0",
+    "ora": "^8.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
