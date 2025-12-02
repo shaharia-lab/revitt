@@ -190,7 +190,7 @@ jobs:
         with:
           name: e2e-screenshot
           path: e2e-screenshot.png
-          retention-days: 7
+          retention-days: 1
           
       - name: Clean up
         if: always()
